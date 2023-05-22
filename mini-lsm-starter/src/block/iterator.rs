@@ -75,10 +75,7 @@ impl BlockIterator {
         self.key.clear();
         self.key.extend(key);
         let value_len = entry.get_u16() as usize;
-        let value = entry[..value_len].to_vec();
-        entry.advance(value_len);
-        self.value.clear();
-        self.value.extend(value);
+        self.value = entry[..value_len].to_vec();
     }
 
     /// Move to the next key in the block.
@@ -89,20 +86,19 @@ impl BlockIterator {
 
     /// Seek to the first key that >= `key`.
     pub fn seek_to_key(&mut self, key: &[u8]) {
-        let mut left = 0;
-        let mut right = self.block.offsets.len();
-        while left < right {
-            let mid = left + (right - left) / 2;
-            let offset = self.block.offsets[mid] as usize;
-            let mut entry = &self.block.data[offset..];
-            let key_len = entry.get_u16() as usize;
-            let entry_key = &entry[..key_len];
-            if entry_key < key {
-                left = mid + 1;
-            } else {
-                right = mid;
+
+        let mut low = 0;
+        let mut high = self.block.offsets.len();
+        while low < high {
+            let mid = low + (high - low) / 2;
+            self.seek_to(mid);
+            assert!(self.is_valid());
+            match self.key().cmp(key) {
+                std::cmp::Ordering::Less => low = mid + 1,
+                std::cmp::Ordering::Greater => high = mid,
+                std::cmp::Ordering::Equal => return,
             }
         }
-        self.seek_to(left);
+        self.seek_to(low);
     }
 }
