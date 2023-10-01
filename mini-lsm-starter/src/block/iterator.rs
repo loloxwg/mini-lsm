@@ -72,15 +72,24 @@ impl BlockIterator {
         self.idx = idx;
     }
 
+
+    /// Seek to the specified position and update the current `key` and `value`
+    /// Index update will be handled by caller
     fn seek_to_offset(&mut self, offset: usize) {
         let mut entry = &self.block.data[offset..];
+        // Since `get_u16()` will automatically move the ptr 2 bytes ahead here,
+        // we don't need to manually advance it
         let key_len = entry.get_u16() as usize;
         let key = entry[..key_len].to_vec();
         entry.advance(key_len);
         self.key.clear();
         self.key.extend(key);
+
         let value_len = entry.get_u16() as usize;
-        self.value = entry[..value_len].to_vec();
+        let value=entry[..value_len].to_vec();
+        entry.advance(value_len);
+        self.value.clear();
+        self.value.extend(value)
     }
 
     /// Move to the next key in the block.
