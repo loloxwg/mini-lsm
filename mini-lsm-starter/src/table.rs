@@ -6,6 +6,8 @@ mod iterator;
 
 use std::arch::aarch64::uint16x4_t;
 use std::borrow::Cow::Borrowed;
+use std::fs::metadata;
+use std::hint::black_box;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -129,24 +131,35 @@ impl SsTable {
 
     /// Read a block from the disk.
     pub fn read_block(&self, block_idx: usize) -> Result<Arc<Block>> {
-        unimplemented!()
+        let offset = self.block_metas[block_idx].offset;
+        let offset_end = self
+            .block_metas.get(block_idx + 1)
+            .map(|x| x.offset)
+            .unwrap_or(self.block_meta_offset);
+        let block_meta = self
+            .file
+            .read(offset as u64, (offset_end - offset) as u64)?;
+        Ok(Arc::new(Block::decode(&block_meta[..])))
     }
 
     /// Read a block from disk, with block cache. (Day 4)
     pub fn read_block_cached(&self, block_idx: usize) -> Result<Arc<Block>> {
-        unimplemented!()
+
+        self.read_block(block_idx)
     }
 
     /// Find the block that may contain `key`.
     /// Note: You may want to make use of the `first_key` stored in `BlockMeta`.
     /// You may also assume the key-value pairs stored in each consecutive block are sorted.
     pub fn find_block_idx(&self, key: &[u8]) -> usize {
-        unimplemented!()
+        self.block_metas
+            .partition_point(|meta|meta.first_key<=key)
+            .saturating_sub(1)
     }
 
     /// Get number of data blocks.
     pub fn num_of_blocks(&self) -> usize {
-        unimplemented!()
+        self.block_metas.len()
     }
 }
 
